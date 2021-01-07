@@ -1,4 +1,4 @@
 if(NOT TARGET hedley)
     add_library(hedley INTERFACE IMPORTED GLOBAL)
-    target_include_directories(hedley INTERFACE "${CMAKE_CURRENT_LIST_DIR}/include")
+    set_target_properties(hedley PROPERTIES INTERFACE_INCLUDE_DIRECTORIES "${CMAKE_CURRENT_LIST_DIR}/include")
 endif()
