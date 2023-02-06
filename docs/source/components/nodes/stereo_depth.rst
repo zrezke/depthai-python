@@ -312,7 +312,7 @@ written in camera intrinsics (``intrinsics[0][0]``):
 
   with dai.Device() as device:
     calibData = device.readCalibration()
-    intrinsics = calibData.getCameraIntrinsics(dai.CameraBoardSocket.RIGHT)
+    intrinsics = calibData.getCameraIntrinsics(dai.CameraBoardSocket.CAM_C)
     print('Right mono camera focal length in pixels:', intrinsics[0][0])
 
 Here's theoretical calculation of the focal length in pixels:
@@ -320,10 +320,10 @@ Here's theoretical calculation of the focal length in pixels:
 .. code-block:: python
 
   focal_length_in_pixels = image_width_in_pixels * 0.5 / tan(HFOV * 0.5 * PI/180)
-  
+
   # With 400P mono camera resolution where HFOV=71.9 degrees
   focal_length_in_pixels = 640 * 0.5 / tan(71.9 * 0.5 * PI / 180) = 441.25
-  
+
   # With 800P mono camera resolution where HFOV=71.9 degrees
   focal_length_in_pixels = 1280 * 0.5 / tan(71.9 * 0.5 * PI / 180) = 882.5
 
@@ -333,7 +333,7 @@ Examples for calculating the depth value, using the OAK-D (7.5cm baseline):
 
   # For OAK-D @ 400P mono cameras and disparity of eg. 50 pixels
   depth = 441.25 * 7.5 / 50 = 66.19 # cm
-  
+
   # For OAK-D @ 800P mono cameras and disparity of eg. 10 pixels
   depth = 882.5 * 7.5 / 10 = 661.88 # cm
 
@@ -424,7 +424,7 @@ So using this formula for existing models the *theoretical* max distance is:
 
   # For OAK-D (7.5cm baseline)
   Dm = (7.5/2) * tan((90 - 71.9/1280)*pi/180) = 3825.03cm = 38.25 meters
-  
+
   # For OAK-D-CM4 (9cm baseline)
   Dm = (9/2) * tan((90 - 71.9/1280)*pi/180) = 4590.04cm = 45.9 meters
 
