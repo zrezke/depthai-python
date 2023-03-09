@@ -149,6 +149,7 @@ class CamTestGui:
         self.disconnect_button.setHidden(True)
 
     def handle_disconnect(self):
+        self.available_devices_combo.clear()
         self.connect_button.setDisabled(False)
         self.disconnect_button.setDisabled(True)
         self.disconnect_button.setHidden(True)
@@ -187,6 +188,7 @@ class CamTestGui:
 
 class WorkerSignals(QtCore.QObject):
     finished = QtCore.pyqtSignal(list)
+    exception = QtCore.pyqtSignal(Exception)
 
 class ThreadWorker(QtCore.QThread):
 
@@ -213,8 +215,11 @@ class RunnableWorker(QtCore.QRunnable):
     
     @QtCore.pyqtSlot()
     def run(self):
-        result = self.fn(*self.args, **self.kwargs)
-        self.signals.finished.emit(result)
+        try:
+            result = self.fn(*self.args, **self.kwargs)
+            self.signals.finished.emit(result)
+        except Exception as e:
+            self.signals.exception.emit(e)
 
 
 class Application(QtWidgets.QMainWindow):
@@ -225,8 +230,7 @@ class Application(QtWidgets.QMainWindow):
         self.ui = CamTestGui(self)
         self.query_devices_timer = QtCore.QTimer()
         self.query_devices_timer.timeout.connect(self.query_devices)
-        self.query_devices_timer.start(2000)
-        self.query_devices()
+        self.query_devices_timer.start(1000)
         self.test_process = None
 
     def construct_args_from_gui(self) -> List[str]:
@@ -273,46 +277,35 @@ class Application(QtWidgets.QMainWindow):
         args = cam_test_arg_parser.parse_args(self.construct_args_from_gui())
         if not args:
             return
-        # self.test_process = QtCore.QProcess()
-        # Forward stdout
-        # self.test_process.setProcessChannelMode(QtCore.QProcess.ProcessChannelMode.ForwardedChannels)
-        # self.test_process.finished.connect(self.disconnect)
-        # if getattr(sys, 'frozen', False):
-        #     self.test_process.start(sys.executable, args)
-        # else:
-        #     self.test_process.start(sys.executable, sys.argv + args)
         self.query_devices_timer.stop()
         self.ui.handle_connect()
 
-        # self.pool = QtCore.QThreadPool.globalInstance()
         self.cam_test_worker = ThreadWorker(cam_test, args)
         self.cam_test_worker.start()
-        # self.pool.start(self.cam_test_worker)
-        # self.cam_test_thread = self.pool.thread()
         self.cam_test_worker.signals.finished.connect(self.disconnect)
+        self.cam_test_worker.signals.exception.connect(self.disconnect)
     
     def disconnect(self):
         self.query_devices_timer.start()
         self.ui.handle_disconnect()
         # if self.test_process and self.test_process.state() == QtCore.QProcess.ProcessState.Running:
         #     self.test_process.kill()
-
         self.cam_test_worker.terminate()
         
     def query_devices(self):
         self.query_devices_timer.stop()
-        self.pool = QtCore.QThreadPool.globalInstance()
-        self.query_devices_worker = RunnableWorker(dai.Device.getAllAvailableDevices)
+        self.query_devices_worker = ThreadWorker(dai.Device.getAllAvailableDevices)
         self.query_devices_worker.signals.finished.connect(self.on_finish_query_devices)
-        self.pool.start(self.query_devices_worker)
+        self.query_devices_worker.start()
 
     def on_finish_query_devices(self, result):
         if self.test_process:
             print("Process: ", self.test_process, self.test_process.state())
         self.ui.available_devices_combo.clear()
         self.available_devices = result
-        self.ui.available_devices_combo.addItems(
-            list(map(lambda d: f"{d.name} ({d.getMxId()})", self.available_devices)))
+        if self.available_devices:
+            self.ui.available_devices_combo.addItems(
+                list(map(lambda d: f"{d.name} ({d.getMxId()})", self.available_devices)))
         self.query_devices_timer.start()
 
 
